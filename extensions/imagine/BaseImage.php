@@ -25,6 +25,7 @@ use yii\helpers\ArrayHelper;
  *
  * @author Antonio Ramirez <amigo.cobos@gmail.com>
  * @author Qiang Xue <qiang.xue@gmail.com>
+ * @author Aripjanov Sherzod <sherzod@aripjanov.pro>
  * @since 2.0
  */
 class BaseImage
@@ -253,5 +254,70 @@ class BaseImage
         $image->paste($img, $pasteTo);
 
         return $image;
+    }
+
+    /**
+     * @param string $filename the full path to the image file
+     * @param integer $width
+     * @param integer $height
+     * @param string $backgroundColor
+     * @param int $alpha
+     * @return ImageInterface
+     */
+    public static function resizeCanvas($filename, $width, $height, $backgroundColor = 'fff', $alpha = 100)
+    {
+        $img = static::getImagine()->open(Yii::getAlias($filename));
+        $size = $img->getSize();
+
+        $newWidth = min($width, $size->getWidth());
+        $newHeight = min($height, $size->getHeight());
+
+        $widthProportion = $newWidth / $size->getWidth();
+        $heightProportion = $newHeight / $size->getHeight();
+
+        if ($widthProportion < $heightProportion) {
+            $newHeight = round($widthProportion * $size->getHeight());
+        } else {
+            $newWidth = round($heightProportion * $size->getWidth());
+        }
+
+        $startX = floor(($width - $newWidth) / 2);
+        $startY = floor(($height - $newHeight) / 2);
+
+        $resizeCanvas = static::getImagine()->create(new Box($width, $height), new Color($backgroundColor, $alpha));
+        $resizeCanvas->paste($img->resize(new Box($newWidth, $newHeight)), new Point($startX, $startY));
+
+        return $resizeCanvas;
+    }
+
+    /**
+     * @param $filename
+     * @param $width
+     * @param $height
+     * @param bool $proportional
+     * @return ManipulatorInterface
+     */
+    public static function resize($filename, $width, $height, $proportional = true)
+    {
+        $img = static::getImagine()->open(Yii::getAlias($filename));
+        $size = $img->getSize();
+
+        $width = $width !== false ? $width : $size->getWidth();
+        $height = $height !== false ? $height : $size->getHeight();
+
+        if ($proportional) {
+            $newHeight = $height;
+            $newWidth = round($newHeight / $size->getHeight() * $size->getWidth());
+
+            if ($newWidth > $width) {
+                $newWidth = $width;
+                $newHeight = round($newWidth / $size->getWidth() * $size->getHeight());
+            }
+        } else {
+            $newWidth = $width;
+            $newHeight = $height;
+        }
+
+        return $img->resize(new Box($newWidth, $newHeight), ImageInterface::FILTER_LANCZOS);
     }
 }
